@@ -1,0 +1,6 @@
+core = 7.x
+description = Modify user login and registration pages (by BarkleyREI)
+name = Custom Login/Registration
+; dependencies[] = data
+configure = admin/config/system/custom_login
+files[] = custom_login.module

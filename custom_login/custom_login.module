@@ -1,0 +1,129 @@
+<?php
+
+/**
+ * Implementation of hook_menu.
+ * Create our new path to the new login screen.
+ */
+function custom_login_menu() {
+  $items = array();
+
+  $replacement = variable_get('custom_login_replacement');
+
+  if ($replacement != '') {
+    $replacement = str_replace('/', '', $replacement);
+  } else {
+    $replacement = 'user';
+    variable_set('custom_login_replacement', 'user');
+  }
+
+  $items[$replacement] = array(
+    'title' => 'User Login',
+    'page callback' => 'custom_login_user_page',
+    'page arguments' => array(true),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items[$replacement.'/password'] = array(
+    'title' => 'User Password',
+    'page callback' => 'movepasswordpage_user_page',
+    'page arguments' => array(true),
+    'access callback' => 'user_is_anonymous',
+    'type' => MENU_LOCAL_TASK,
+    'file' => '../../../../modules/user/user.pages.inc',
+
+  );
+
+  $items[$replacement.'/register'] = array(
+    'title' => 'New User Registration Page',
+    'page callback' => 'moveregisterpage_user_page',
+    'page arguments' => array(true),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/config/system/custom_login'] = array(
+    'title' => 'Custom Login/Registration/Lost Password alias',
+    'description' => 'Configuration for Custom Login module',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('custom_login_form'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_menu_alter.
+ * Tell the menu system to use our custom callback rather than the core callback.
+ */
+function custom_login_menu_alter(&$items) {
+  $items['user']['page callback'] = 'custom_login_user_page';
+  $items['user/password']['page callback'] = 'movepasswordpage_user_page';
+  $items['user/password']['page arguments'] = array(false);
+  $items['user/register']['page callback'] = 'moveregisterpage_user_page';
+  $items['user/register']['page arguments'] = array(false);
+}
+
+/**
+ * Access callback for path /user.
+ *
+ * Displays user profile if user is logged in, or login form for anonymous
+ * users if using our special path, access denied if using default path.
+ */
+function custom_login_user_page($show = false) {
+  global $user;
+  if ($user->uid) {
+    menu_set_active_item('user/'. $user->uid);
+    return menu_execute_active_handler();
+  }
+  else if ($show) {
+    return drupal_get_form('user_login');
+  }
+
+  drupal_access_denied();
+}
+
+function movepasswordpage_user_page($show = false) {
+  global $user;
+  // var_dump($user);
+  // var_dump($show);
+  if ($user->uid) {
+    menu_set_active_item('user/password'. $user->uid);
+    return menu_execute_active_handler();
+  }
+  else if ($show === 'user_pass' ) {
+    return drupal_not_found();
+  }
+  return drupal_get_form('user_pass');
+}
+
+function moveregisterpage_user_page($show = false) {
+  global $user;
+  // var_dump($user);
+  // var_dump($show);
+
+  if ($user->uid) {
+    menu_set_active_item('user/register'. $user->uid);
+    return menu_execute_active_handler();
+  }
+  else if ($show === 'user_register_form') {
+        return drupal_not_found();
+  }
+  return drupal_get_form('user_register_form');
+}
+
+function custom_login_form($form, &$form_state) {
+
+  $form['custom_login_replacement'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Replacement for \'/user/\'',
+    '#default_value' => variable_get('custom_login_replacement'),
+    '#description' => t('Used to replace /user/ for login, registration, and lost password forms. Omit slashes. Clear drupal cache after changing this value to see changes.'),
+    '#required' => TRUE
+  );
+
+  return system_settings_form($form);
+
+}
